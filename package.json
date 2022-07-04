@@ -1,0 +1,36 @@
+{
+  "name": "@rugo-vn/server",
+  "version": "1.0.0",
+  "description": "A server listener for the platform.",
+  "main": "./src/index.js",
+  "type": "module",
+  "scripts": {
+    "doc": "jsdoc2md **/*.js > docs/API.md",
+    "lint:check": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint": "npm run lint:fix",
+    "test": "mocha",
+    "coverage": "c8 npm run test",
+    "pre-commit": "npm run lint && npm run coverage && npm run doc"
+  },
+  "author": "Vu Anh Hao <hi@haova.me> (https://www.haova.me)",
+  "license": "MIT",
+  "devDependencies": {
+    "c8": "^7.11.2",
+    "chai": "^4.3.6",
+    "chai-http": "^4.3.0",
+    "eslint": "^8.14.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-jsdoc": "^39.2.9",
+    "jsdoc-to-markdown": "^7.1.1",
+    "mocha": "^10.0.0"
+  },
+  "dependencies": {
+    "@koa/cors": "^3.3.0",
+    "colors": "^1.4.0",
+    "koa": "^2.13.4",
+    "koa-body": "^5.0.0",
+    "koa-qs": "^3.0.0",
+    "@rugo-vn/common": "^1.0.0"
+  }
+}
