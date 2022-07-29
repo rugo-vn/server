@@ -1,6 +1,6 @@
 {
   "name": "@rugo-vn/server",
-  "version": "1.0.0",
+  "version": "2.0.0-beta.0",
   "description": "A server listener for the platform.",
   "main": "./src/index.js",
   "type": "module",
@@ -23,14 +23,17 @@
     "eslint-config-standard": "^17.0.0",
     "eslint-plugin-jsdoc": "^39.2.9",
     "jsdoc-to-markdown": "^7.1.1",
+    "log4js": "^6.6.1",
     "mocha": "^10.0.0"
   },
   "dependencies": {
     "@koa/cors": "^3.3.0",
+    "@koa/router": "^12.0.0",
+    "@rugo-vn/common": "^1.0.0",
     "colors": "^1.4.0",
     "koa": "^2.13.4",
     "koa-body": "^5.0.0",
     "koa-qs": "^3.0.0",
-    "@rugo-vn/common": "^1.0.0"
+    "ramda": "^0.28.0"
   }
 }
