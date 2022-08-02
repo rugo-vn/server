@@ -3,70 +3,74 @@
 import chai, { expect } from 'chai';
 import chaiHttp from 'chai-http';
 import log4js from 'log4js';
-import { mergeDeepLeft, mergeDeepRight } from 'ramda';
+import { mergeDeepRight } from 'ramda';
+import { ServiceBroker } from 'moleculer';
+import * as serverService from '../src/index.js';
 
 const logger = log4js.getLogger();
 logger.level = "info";
 
-import * as originServer from '../src/index.js';
-
 chai.use(chaiHttp);
 
-const createServer = (config = {}) => mergeDeepRight({
-  ...originServer,
-  settings: { port: 3000 },
-  logger: logger,
-  call(name, ...params){
-    switch (name) {
-      case 'demo.home':
-        return { status: 200, body: 'ok', headers: [['Content-Type', 'text/plain']] };
-
-      case 'demo.notfound':
-        return null;
-
-      case 'demo.custom':
-        return { status: 400, body: 'Something wrong' };
-
-      default:
-        return this.actions[name].bind(this)(...params);
-    }
+const demoService = {
+  name: 'demo',
+  actions: {
+    async home() { return { status: 200, body: 'ok', headers: [['Content-Type', 'text/plain']] } },
+    async notfound(){ return null; },
+    async custom(){ return { status: 400, body: 'Something wrong' }; },
+    async info(ctx){ return { status: 200, body: { params: ctx.params, meta: ctx.meta }}}
   }
-}, config);
+}
 
 describe("Server test", () => {
+  let broker;
+
+  beforeEach(async () => {
+    broker = new ServiceBroker();
+    broker.createService(demoService);
+    broker.createService(mergeDeepRight(
+      serverService, {
+        settings: {
+          port: 3000,
+          routes: [
+            { method: 'get', path: '/', address: 'demo.home' },
+            { method: 'get', path: '/not-found', address: 'demo.notfound' },
+            { method: 'get', path: '/custom', address: 'demo.custom'},
+            { method: 'all', path: '/info/:name', address: 'demo.info'}
+          ],
+          schemas: [
+            { name: 'bob' },
+            { name: 'alice' },
+          ]
+        }
+      })
+    );
+
+    await broker.start();
+  });
+
+  afterEach(async () => {
+    await broker.stop();
+  });
+
   it('should create server', async () => {
-    const server = createServer();
-
-    await server.started();
-
     // get address
-    expect(server.call('address')).to.be.eq('http://127.0.0.1:3000');
+    const address = await broker.call('server.address');
+    expect(address).to.be.eq('http://127.0.0.1:3000');
 
     // simple get
-    const res = await chai.request(server.call('address'))
-      .get('/');
+    const res = await chai.request(address)
+      .get('/something');
 
     expect(res).to.has.property('status', 404);
     expect(res.text).to.be.eq('Not Found');
-
-    await server.stopped();
   });
 
   it('should routing', async () => {
-    const server = createServer({
-      settings: {
-        routes: [
-          { method: 'get', path: '/', address: 'demo.home' },
-          { method: 'get', path: '/not-found', address: 'demo.notfound' },
-          { method: 'get', path: '/custom', address: 'demo.custom'}
-        ]
-      }
-    });
-
-    await server.started();
+    const address = await broker.call('server.address');
 
     // 200
-    const res = await chai.request(server.call('address'))
+    const res = await chai.request(address)
       .get('/');
 
     expect(res).to.has.property('status', 200);
@@ -74,19 +78,33 @@ describe("Server test", () => {
     expect(res.headers).to.has.property('content-type', 'text/plain');
 
     // 404
-    const res2 = await chai.request(server.call('address'))
+    const res2 = await chai.request(address)
       .get('/not-found');
 
     expect(res2).to.has.property('status', 404);
     expect(res2.text).to.be.eq('Not Found');
 
     // custom
-    const res3 = await chai.request(server.call('address'))
+    const res3 = await chai.request(address)
       .get('/custom');
 
     expect(res3).to.has.property('status', 400);
     expect(res3.text).to.be.eq('Something wrong');
+  });
 
-    await server.stopped();
+  it('should pass arguments', async () => {
+    const address = await broker.call('server.address');
+
+    const res = await chai.request(address)
+      .post('/info/foo?filters[name]=bar')
+      .set('X-Rugo-App', 'appid')
+      .send({ abc: 'def' });
+
+    expect(res).to.has.property('status', 200);
+    expect(res.body.params.params).to.has.property('name', 'foo');
+    expect(res.body.params.form).to.has.property('abc', 'def');
+    expect(res.body.params.headers).to.has.property('x-rugo-app', 'appid');
+    expect(res.body.params.query.filters).to.has.property('name', 'bar');
+    expect(res.body.meta.schemas).to.has.property('length', 2);
   });
 });

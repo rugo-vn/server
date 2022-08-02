@@ -27,10 +27,15 @@ const log = async (logger, ctx, next) => {
 };
 
 const createRouteHandle = async (service, address, ctx, next) => {
-  const res = await service.call(address, {
+  const res = await service.broker.call(address, {
     params: ctx.params,
     form: ctx.form,
-    headers: ctx.headers
+    headers: ctx.headers,
+    query: ctx.query
+  }, {
+    meta: {
+      schemas: service.settings.schemas || []
+    }
   });
 
   let done = true;

@@ -1,6 +1,6 @@
 {
   "name": "@rugo-vn/server",
-  "version": "2.0.0-beta.0",
+  "version": "2.0.0-beta.1",
   "description": "A server listener for the platform.",
   "main": "./src/index.js",
   "type": "module",
@@ -24,7 +24,8 @@
     "eslint-plugin-jsdoc": "^39.2.9",
     "jsdoc-to-markdown": "^7.1.1",
     "log4js": "^6.6.1",
-    "mocha": "^10.0.0"
+    "mocha": "^10.0.0",
+    "moleculer": "^0.14.21"
   },
   "dependencies": {
     "@koa/cors": "^3.3.0",
