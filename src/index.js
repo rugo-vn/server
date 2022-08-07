@@ -5,7 +5,7 @@ import cors from '@koa/cors';
 import applyQueryString from 'koa-qs';
 import Router from '@koa/router';
 
-import { curry } from 'ramda';
+import { clone, curry } from 'ramda';
 import { FileData } from '@rugo-vn/common';
 
 export const name = 'server';
@@ -34,7 +34,8 @@ const createRouteHandle = async (service, address, ctx, next) => {
     query: ctx.query
   }, {
     meta: {
-      schemas: service.settings.schemas || []
+      schemas: clone(service.settings.schemas || []),
+      authSchema: clone(service.settings.authSchema)
     }
   });
 
