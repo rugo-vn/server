@@ -27,7 +27,7 @@ const log = async (logger, ctx, next) => {
 };
 
 const createRouteHandle = async (service, address, ctx, next) => {
-  const res = await service.broker.call(address, {
+  const res = await service.runner.call(address, {
     params: ctx.params,
     form: ctx.form,
     headers: ctx.headers,
