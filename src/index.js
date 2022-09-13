@@ -1,3 +1,4 @@
+import fs from 'fs';
 import Koa from 'koa';
 import colors from 'colors';
 import koaBody from 'koa-body';
@@ -53,7 +54,12 @@ const createRouteHandle = async (service, address, ctx, next) => {
   }
 
   ctx.status = res.status || 200;
-  ctx.body = res.body || '';
+
+  if (res.file){
+    ctx.body = fs.createReadStream(res.file);
+  } else {
+    ctx.body = res.body || '';
+  }
 };
 
 export const actions = {
