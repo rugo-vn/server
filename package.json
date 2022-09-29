@@ -1,6 +1,6 @@
 {
   "name": "@rugo-vn/server",
-  "version": "2.0.0-beta.2",
+  "version": "2.0.0",
   "description": "A server listener for the platform.",
   "main": "./src/index.js",
   "type": "module",
@@ -28,10 +28,11 @@
     "moleculer": "^0.14.21"
   },
   "dependencies": {
+    "@rugo-vn/service": "../service",
     "@koa/cors": "^3.3.0",
     "@koa/router": "^12.0.0",
-    "@rugo-vn/common": "^1.0.0",
     "colors": "^1.4.0",
+    "cookie": "^0.5.0",
     "koa": "^2.13.4",
     "koa-body": "^5.0.0",
     "koa-qs": "^3.0.0",

@@ -1,128 +1,56 @@
-import fs from 'fs';
+import { RugoException } from '@rugo-vn/service';
 import Koa from 'koa';
+import { curryN, path } from 'ramda';
 import colors from 'colors';
 import koaBody from 'koa-body';
 import cors from '@koa/cors';
 import applyQueryString from 'koa-qs';
 import Router from '@koa/router';
 
-import { clone, curry } from 'ramda';
-import { FileData } from '@rugo-vn/common';
-
 export const name = 'server';
 
-const log = async (logger, ctx, next) => {
-  const ltime = new Date();
-  await next();
-  const ctime = new Date();
+export * as methods from './methods.js';
 
-  logger.info(
-    colors.yellow(ctx.method) +
-    ' ' +
-    (Math.floor(ctx.status / 100) === 2 ? colors.green(ctx.status) : colors.red(ctx.status)) +
-    ' ' +
-    colors.white(ctx.url) +
-    ' ' +
-    colors.magenta(`${ctime - ltime}ms`)
-  );
-};
+export const started = async function () {
+  const port = path(['settings', 'server', 'port'], this);
 
-const createRouteHandle = async (service, address, ctx, next) => {
-  const res = await service.runner.call(address, {
-    params: ctx.params,
-    form: ctx.form,
-    headers: ctx.headers,
-    query: ctx.query
-  }, {
-    meta: {
-      schemas: clone(service.settings.schemas || []),
-      authSchema: clone(service.settings.authSchema)
-    }
-  });
+  if (!port) { throw new RugoException('Could not find server port'); }
 
-  let done = true;
-
-  if (!res) { done = false; }
-
-  if (res && !res.status && !res.body) { done = false; }
-
-  if (!done) { return await next(); }
-
-  const headers = res.headers || [];
-  for (const [key, value] of headers) {
-    ctx.set(key, value);
-  }
-
-  ctx.status = res.status || 200;
-
-  if (res.file){
-    ctx.body = fs.createReadStream(res.file);
-  } else {
-    ctx.body = res.body || '';
-  }
-};
-
-export const actions = {
-  address () {
-    return `http://127.0.0.1:${this.settings.port}`;
-  }
-};
-
-/**
- *
- */
-export async function started () {
-  // create server
+  const routes = path(['settings', 'server', 'routes'], this) || [];
   const server = new Koa();
 
-  // middlewares
-  server.use(curry(log)(this.logger));
+  // each request start
+  server.use(this.logging);
 
-  // parser
-  applyQueryString(server);
+  applyQueryString(server); // parse query string
+  server.use(cors()); // allow cors
+  server.use(koaBody({ multipart: true })); // parse body
 
-  server.use(cors());
-  server.use(koaBody({ multipart: true }));
-
-  server.use(async (ctx, next) => {
-    ctx.form = {
-      ...ctx.request.body,
-      ...ctx.request.files
-    };
-
-    for (const key in ctx.form) {
-      if (ctx.form[key] && ctx.form[key].constructor.name === 'PersistentFile') {
-        ctx.form[key] = new FileData(ctx.form[key].filepath);
-      }
-    }
-
-    return await next();
-  });
+  // pre-routing
+  server.use(this.exceptHandle);
+  server.use(this.prepareRouting);
 
   // routing
   const router = new Router();
-  const routeHandle = curry(createRouteHandle)(this);
+  const routeHandle = curryN(2, this.createRouteHandle);
 
-  for (const route of this.settings.routes || []) {
-    router[route.method.toLowerCase()](route.path, routeHandle(route.address));
+  for (const route of routes) {
+    router[(route.method || 'get').toLowerCase()](route.path, routeHandle(route.action));
   }
 
   server.use(router.routes());
 
   // listen
   await new Promise(resolve => {
-    this.listener = server.listen(this.settings.port, () => {
+    this.listener = server.listen(port, () => {
       resolve();
     });
   });
 
-  this.logger.info(`Server is running at port ${this.settings.port}`);
-}
+  this.logger.info(colors.green(`Server is ${colors.bold('running')} at ${colors.yellow('http://localhost:' + port)}`));
+};
 
-/**
- *
- */
-export async function stopped () {
+export const closed = async function () {
   await this.listener.close();
   delete this.listener;
-}
+};
