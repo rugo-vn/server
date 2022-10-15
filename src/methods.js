@@ -1,5 +1,6 @@
 import colors from 'colors';
 import cookie from 'cookie';
+import { FileCursor } from '@rugo-vn/service';
 import { clone, path } from 'ramda';
 
 export const logging = async function (ctx, next) {
@@ -38,27 +39,18 @@ export const prepareRouting = async function (ctx, next) {
   const cookies = ctx.headers.cookie;
 
   // args
-  let args = {
+  const args = {
     method: ctx.method,
     path: ctx.path,
     // params - not yet,
     form: ctx.request.body || {},
     query: ctx.query,
     headers: ctx.headers,
-    cookies: cookies ? cookie.parse(cookies) : {}
+    cookies: cookies ? cookie.parse(cookies) : {},
+    ...clone(path(['settings', 'server', 'args'], this) || {})
   };
-  let shared = clone(path(['settings', 'server', 'shared'], this) || {});
-
-  // prepare action
-  const prepareAction = path(['settings', 'server', 'prepare'], this);
-  if (prepareAction) {
-    const resp = await this.call(prepareAction, { args, shared });
-    args = resp && resp.args ? resp.args : args;
-    shared = resp && resp.shared ? resp.shared : shared;
-  }
 
   ctx.args = args;
-  ctx.shared = shared;
 
   await next();
 };
@@ -67,14 +59,19 @@ export const createRouteHandle = async function (actionAddress, ctx, next) {
   const resp = await this.call(actionAddress, {
     ...ctx.args,
     params: ctx.params
-  }, ctx.shared);
+  });
 
   if (!resp) {
     return await next();
   }
 
   ctx.status = 200;
-  ctx.body = resp.data;
+
+  if (resp.data instanceof FileCursor) {
+    ctx.body = resp.data.toStream();
+  } else {
+    ctx.body = resp.data;
+  }
 
   const headers = path(['meta', 'headers'], resp) || {};
   for (const key in headers) {

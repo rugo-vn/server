@@ -2,7 +2,7 @@
 
 import chai, { expect } from 'chai';
 import chaiHttp from 'chai-http';
-import { createBroker, RugoException } from '@rugo-vn/service';
+import { createBroker, FileCursor, RugoException } from '@rugo-vn/service';
 
 chai.use(chaiHttp);
 
@@ -13,10 +13,9 @@ const demoService = {
     async notfound(){ return null; },
     async custom(){ throw new RugoException() },
     async info({ params, form, headers, query, schemas, hi }){ return { data: { params, form, headers, query, schemas, hi }}},
-    async prepare({ shared}) {
-      shared.hi = 'hello';
-      return { shared };
-    }
+    async file(){
+      return { data: FileCursor('Hello World') };
+    },
   }
 }
 
@@ -31,14 +30,14 @@ describe("Server test", () => {
       ],
       server: {
         port: 8080,
-        prepare: 'demo.prepare',
         routes: [
           { path: '/', action: 'demo.home' },
           { path: '/not-found', action: 'demo.notfound' },
           { path: '/custom', action: 'demo.custom' },
+          { path: '/file', action: 'demo.file' },
           { method: 'post', path: '/info/:name', action: 'demo.info' },
         ],
-        shared: {
+        args: {
           schemas: [1, 2],
         }
       }
@@ -98,6 +97,13 @@ describe("Server test", () => {
     expect(res.body.headers).to.has.property('x-rugo-app', 'appid');
     expect(res.body.query.filters).to.has.property('name', 'bar');
     expect(res.body.schemas).to.has.property('length', 2);
-    expect(res.body).to.has.property('hi', 'hello');
+  });
+
+  it('should file response', async () => {
+    const res = await chai.request(address)
+      .get('/file')
+      .buffer();
+
+    expect(res.body.toString()).to.be.eq('Hello World');
   });
 });
