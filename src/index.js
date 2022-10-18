@@ -6,6 +6,7 @@ import koaBody from 'koa-body';
 import cors from '@koa/cors';
 import applyQueryString from 'koa-qs';
 import Router from '@koa/router';
+import createStatic from './static.js';
 
 export const name = 'server';
 
@@ -18,6 +19,13 @@ export const started = async function () {
 
   const routes = path(['settings', 'server', 'routes'], this) || [];
   const server = new Koa();
+
+  // serve static
+  const staticDir = path(['settings', 'server', 'static'], this);
+  if (staticDir) {
+    this.logger.info(`Enabled static serving`);
+    server.use(createStatic({ root: staticDir }));
+  }
 
   // each request start
   server.use(this.logging);
