@@ -38,12 +38,18 @@ export const prepareRouting = async function (ctx, next) {
   // parse cookie
   const cookies = ctx.headers.cookie;
 
+  const form = ctx.request.body || {};
+
+  for (const key in ctx.request.files) {
+    form[key] = new FileCursor(ctx.request.files[key].filepath);
+  }
+
   // args
   const args = {
     method: ctx.method,
     path: ctx.path,
     // params - not yet,
-    form: ctx.request.body || {},
+    form,
     query: ctx.query,
     headers: ctx.headers,
     cookies: cookies ? cookie.parse(cookies) : {},

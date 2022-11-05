@@ -8,21 +8,21 @@ const createStatic = async ({ root }, ctx, next) => {
     index: 'index.html'
   };
 
-  let done = false
+  let done = false;
 
   if (ctx.method === 'HEAD' || ctx.method === 'GET') {
     try {
-      done = await send(ctx, ctx.path, opts)
+      done = await send(ctx, ctx.path, opts);
     } catch (err) {
       if (err.status !== 404) {
-        throw err
+        throw err;
       }
     }
   }
 
   if (!done) {
-    await next()
+    await next();
   }
-}
+};
 
 export default curryN(2, createStatic);

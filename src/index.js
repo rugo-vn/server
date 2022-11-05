@@ -23,7 +23,7 @@ export const started = async function () {
   // serve static
   const staticDir = path(['settings', 'server', 'static'], this);
   if (staticDir) {
-    this.logger.info(`Enabled static serving`);
+    this.logger.info('Enabled static serving');
     server.use(createStatic({ root: staticDir }));
   }
 
