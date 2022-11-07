@@ -1,3 +1,4 @@
+import { join } from 'path';
 import { RugoException } from '@rugo-vn/service';
 import Koa from 'koa';
 import { curryN, path } from 'ramda';
@@ -11,6 +12,12 @@ import createStatic from './static.js';
 export const name = 'server';
 
 export * as methods from './methods.js';
+
+const transformPath = async (ctx, next) => {
+  ctx.args.path = join('/', ctx.params[0] || '');
+  delete ctx.params[0];
+  await next();
+};
 
 export const started = async function () {
   const port = path(['settings', 'server', 'port'], this);
@@ -43,6 +50,12 @@ export const started = async function () {
   const routeHandle = curryN(2, this.createRouteHandle);
 
   for (const route of routes) {
+    if (route.method === 'use') {
+      router.all(route.path, transformPath, routeHandle(route.action));
+      router.all(join(route.path, '(.*)'), transformPath, routeHandle(route.action));
+      continue;
+    }
+
     router[(route.method || 'get').toLowerCase()](route.path, routeHandle(route.action));
   }
 

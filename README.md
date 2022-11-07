@@ -23,6 +23,16 @@ const settings = {
 }
 ```
 
+**`method`**
+
+- `get`
+- `put`
+- `post`
+- `patch`
+- `delete`
+- `all`
+- `use` is a custom method, which match `all` with `/the/original/path` and `/the/original/path/(.*)`. `(.*)` will be a next `path`.
+
 ## Common
 
 ### Output Args
