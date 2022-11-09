@@ -26,12 +26,14 @@ export const started = async function () {
 
   const routes = path(['settings', 'server', 'routes'], this) || [];
   const server = new Koa();
+  const router = new Router();
+  const routeHandle = curryN(2, this.createRouteHandle);
 
   // serve static
-  const staticDir = path(['settings', 'server', 'static'], this);
-  if (staticDir) {
+  const statics = path(['settings', 'server', 'statics'], this);
+  if (Array.isArray(statics)) {
     this.logger.info('Enabled static serving');
-    server.use(createStatic({ root: staticDir }));
+    server.use(createStatic({ statics }));
   }
 
   // each request start
@@ -44,11 +46,16 @@ export const started = async function () {
   // pre-routing
   server.use(this.exceptHandle);
   server.use(this.prepareRouting);
+  
+  // redirects
+  const redirects = path(['settings', 'server', 'redirects'], this);
+  if (Array.isArray(redirects)) {
+    for (let r of redirects) {
+      router.redirect(r.path, r.to);
+    }
+  }
 
   // routing
-  const router = new Router();
-  const routeHandle = curryN(2, this.createRouteHandle);
-
   for (const route of routes) {
     if (route.method === 'use') {
       router.all(route.path, transformPath, routeHandle(route.action));

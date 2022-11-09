@@ -8,15 +8,21 @@ export const logging = async function (ctx, next) {
   await next();
   const ctime = new Date();
 
-  this.logger.info(
-    colors.magenta(ctx.method) +
-    ' ' +
-    (Math.floor(ctx.status / 100) === 2 ? colors.green(ctx.status) : colors.red(ctx.status)) +
-    ' ' +
-    colors.white(ctx.url) +
-    ' ' +
-    colors.yellow(`${ctime - ltime}ms`)
-  );
+  const msgs = [];
+
+  msgs.push(colors.magenta(ctx.method));
+  msgs.push(Math.floor(ctx.status / 100) === 2 ? colors.green(ctx.status) : colors.red(ctx.status));
+  msgs.push(colors.white(ctx.url));
+
+  const redirectLocation = path(['response', 'header', 'location'], ctx);
+  if (redirectLocation){
+    msgs.push(colors.gray(`-> ${redirectLocation}`));
+  }
+
+  msgs.push(colors.yellow(`${ctime - ltime}ms`));
+
+
+  this.logger.info(msgs.join(' '));
 };
 
 export const exceptHandle = async function (ctx, next) {

@@ -1,10 +1,25 @@
-import { resolve } from 'path';
+import { join, resolve } from 'path';
 import { curryN } from 'ramda';
 import send from 'koa-send';
 
-const createStatic = async ({ root }, ctx, next) => {
+const createStatic = async ({ statics }, ctx, next) => {
+  let nextPath, nextRoot;
+
+  for (let s of statics) {
+    if (ctx.path.indexOf(s.use) !== 0)
+      continue;
+
+    nextPath = join('/', ctx.path.substring(s.use.length));
+    nextRoot = s.root;
+    break;
+  }
+
+  if (!nextPath) {
+    return await next();
+  }
+
   const opts = {
-    root: resolve(root),
+    root: resolve(nextRoot),
     index: 'index.html'
   };
 
@@ -12,7 +27,7 @@ const createStatic = async ({ root }, ctx, next) => {
 
   if (ctx.method === 'HEAD' || ctx.method === 'GET') {
     try {
-      done = await send(ctx, ctx.path, opts);
+      done = await send(ctx, nextPath, opts);
     } catch (err) {
       if (err.status !== 404) {
         throw err;

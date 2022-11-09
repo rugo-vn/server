@@ -18,7 +18,18 @@ const settings = {
     args: {
       /* custom args to bind to other actions */
     },
-    static: /* if provided, it will service this directory */,
+    statics: [
+      {
+        use: /* use path of route */,
+        root: /* root directory to serve */,
+      }
+    ],
+    redirects: [
+      {
+        path: /* from path */,
+        to: /* to path */,
+      }
+    ]
   }
 }
 ```
