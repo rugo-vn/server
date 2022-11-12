@@ -4,11 +4,13 @@ import { FileCursor } from '@rugo-vn/service';
 import { clone, path } from 'ramda';
 
 export const logging = async function (ctx, next) {
+  ctx.logs = [];
+  
   const ltime = new Date();
   await next();
   const ctime = new Date();
 
-  const msgs = [];
+  const msgs = ctx.logs || [];
 
   msgs.push(colors.magenta(ctx.method));
   msgs.push(Math.floor(ctx.status / 100) === 2 ? colors.green(ctx.status) : colors.red(ctx.status));
