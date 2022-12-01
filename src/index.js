@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { RugoException } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/exception';
 import Koa from 'koa';
 import { curryN, path } from 'ramda';
 import colors from 'colors';
@@ -46,11 +46,11 @@ export const started = async function () {
   // pre-routing
   server.use(this.exceptHandle);
   server.use(this.prepareRouting);
-  
+
   // redirects
   const redirects = path(['settings', 'server', 'redirects'], this);
   if (Array.isArray(redirects)) {
-    for (let r of redirects) {
+    for (const r of redirects) {
       router.redirect(r.path, r.to);
     }
   }
@@ -58,12 +58,12 @@ export const started = async function () {
   // routing
   for (const route of routes) {
     if (route.method === 'use') {
-      router.all(route.path, transformPath, routeHandle(route.action));
-      router.all(join(route.path, '(.*)'), transformPath, routeHandle(route.action));
+      router.all(route.path, transformPath, routeHandle(route));
+      router.all(join(route.path, '(.*)'), transformPath, routeHandle(route));
       continue;
     }
 
-    router[(route.method || 'get').toLowerCase()](route.path, routeHandle(route.action));
+    router[(route.method || 'get').toLowerCase()](route.path, routeHandle(route));
   }
 
   server.use(router.routes());

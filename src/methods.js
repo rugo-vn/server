@@ -1,11 +1,11 @@
 import colors from 'colors';
 import cookie from 'cookie';
 import { FileCursor } from '@rugo-vn/service';
-import { clone, path } from 'ramda';
+import { clone, mergeDeepLeft, path } from 'ramda';
 
 export const logging = async function (ctx, next) {
   ctx.logs = [];
-  
+
   const ltime = new Date();
   await next();
   const ctime = new Date();
@@ -17,12 +17,11 @@ export const logging = async function (ctx, next) {
   msgs.push(colors.white(ctx.url));
 
   const redirectLocation = path(['response', 'header', 'location'], ctx);
-  if (redirectLocation){
+  if (redirectLocation) {
     msgs.push(colors.gray(`-> ${redirectLocation}`));
   }
 
   msgs.push(colors.yellow(`${ctime - ltime}ms`));
-
 
   this.logger.info(msgs.join(' '));
 };
@@ -69,10 +68,10 @@ export const prepareRouting = async function (ctx, next) {
   await next();
 };
 
-export const createRouteHandle = async function (actionAddress, ctx, next) {
-  const resp = await this.call(actionAddress, {
+export const createRouteHandle = async function (route, ctx, next) {
+  const resp = await this.call(route.action, {
     ...ctx.args,
-    params: ctx.params
+    params: mergeDeepLeft(ctx.params, route.params || {})
   });
 
   if (!resp) {

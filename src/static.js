@@ -5,9 +5,8 @@ import send from 'koa-send';
 const createStatic = async ({ statics }, ctx, next) => {
   let nextPath, nextRoot;
 
-  for (let s of statics) {
-    if (ctx.path.indexOf(s.use) !== 0)
-      continue;
+  for (const s of statics) {
+    if (ctx.path.indexOf(s.use) !== 0) { continue; }
 
     nextPath = join('/', ctx.path.substring(s.use.length));
     nextRoot = s.root;

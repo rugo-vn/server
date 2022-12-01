@@ -2,7 +2,8 @@
 
 import chai, { expect } from 'chai';
 import chaiHttp from 'chai-http';
-import { createBroker, FileCursor, RugoException } from '@rugo-vn/service';
+import { createBroker, FileCursor } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/exception';
 
 chai.use(chaiHttp);
 
