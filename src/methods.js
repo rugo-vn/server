@@ -78,7 +78,7 @@ export const createRouteHandle = async function (route, ctx, next) {
     return await next();
   }
 
-  ctx.status = 200;
+  ctx.status = path(['meta', 'status'], resp) || 200;
 
   if (resp.data instanceof FileCursor) {
     ctx.body = resp.data.toStream();
