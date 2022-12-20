@@ -2,35 +2,48 @@
 
 A server listener for the platform.
 
+## Concept
+
+Each request received, the server will follow these steps:
+
+- Logging.
+- Determine space by `headers['x-space-id']`.
+
 ## Settings
 
 ```js
 const settings = {
   server: {
     port: /* port for server mount to */,
-    routes: [ /* routing list */
-      {
-        method: /* method of http, based on KoaJS */,
-        path: /* path to route, based on KoaJS */,
-        action: /* address to service's action */,
-      }
-    ],
-    args: {
-      /* custom args to bind to other actions */
-    },
-    statics: [
-      {
-        use: /* use path of route */,
-        root: /* root directory to serve */,
-      }
-    ],
-    redirects: [
-      {
-        path: /* from path */,
-        to: /* to path */,
-      }
-    ]
+    secret: /* secret for sign cookies */,
+    space: /* action to get space or default space object */,
+    routes: /* global routes of application */,
   }
+}
+```
+
+## Defines
+
+### Space
+
+```js
+const space = {
+  id: /* if of space, unique, read-only */,
+  name: /* name to display in some condition, unique */,
+  routes: /* local routes of space */,
+}
+```
+
+### Route
+
+```js
+const route = {
+  method: /* default is get */,
+  path: /* path to match, using path-to-regexp to parse */,
+  handlers: /* array of handlers */,
+  handler: /* direct handle object */,
+  input: /* input for direct handler */,
+  output: /* output for direct handler */,
 }
 ```
 
@@ -44,51 +57,75 @@ const settings = {
 - `all`
 - `use` is a custom method, which match `all` with `/the/original/path` and `/the/original/path/(.*)`. `(.*)` will be a next `path`.
 
-## Common
-
-### Output Args
-
-Output using when call other actions:
-
-- `method`
-- `path`
-- `params`
-- `form` body of request, which include text and FileCursor.
-- `query`
-- `headers`
-- `cookies`
-
-Or you can bind custom args by settings above.
-
-### Response
-
-**`200 OK` text response**
-
-Each service's action defined in routes should have response with below format:
+### Handler
 
 ```js
-{
-  data: /* response data */,
-  meta: {
-    headers: {
-      [field]: value, // string value
-    },
-    cookies: {
-      [name]: value, // as string
-      /* or */
-      [name]: { value, ...opts }, // as object with opts
-    }
-  }
+const handler = {
+  name: /* name of handler, if not define, it will call an action */,
+  input: { /* input for handler */
+    'dst.object.path': '_.src.object.path' /* dst is to handler or action, src is from server */,
+  },
+  output: { /* output for handler */
+    'dst.object.path': '_.src.object.path' /* dst is to server, src is from return of handler or action */, 
+  },
 }
 ```
 
-**Binary response**
+**`src`**
 
 ```js
-{
-  data: /* File Cursor */,
+const src = {
+  method: /* original request method */,
+  path: /* original request path */,
+  params: /* from path-to-regexp */,
+  query: /* querystring */,
+  headers: /* headers */,
+  cookies: /* parsed from cookie header */,
+  form: /* from koa-body */,
+  space: /* optional */,
 }
 ```
+
+**`dst`**
+
+```js
+const dst = {
+  status: /* status code */,
+  headers: { /* key-value headers */
+    [field]: value, // string value
+  },
+  cookies: { /* key-value cookies */
+    [name]: value, // as string
+    /* or */
+    [name]: { value, ...opts }, // as object with opts
+  },
+  body: /* response body */,
+}
+```
+
+- After exec a handler, server will check the return is response or not, if true, response.
+- If not, it will merge the return with the `_` in `src`. When the return have existed keys in `src`, it will be overwrited. For example, we have `_.path` in the input, but when output, we assign `_.path` with a new value. So, in the next round of handler, the `_.path` in the input will be that new value.
+- All headers, cookies should be in lowercase.
+
+**`local handlers`**:
+
+`alias`
+
+- Map input to output. Using for fixed request.
+
+`redirect`
+
+- Input:
+  + `to`
+  + `code`
+- Output: `[response]`
+
+`serve`
+
+- Input:
+  + `from`
+  + `path`
+- Output: `[response]`
 
 ## License
 

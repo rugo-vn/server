@@ -1,7 +1,10 @@
 import colors from 'colors';
 import cookie from 'cookie';
 import { FileCursor } from '@rugo-vn/service';
-import { clone, mergeDeepLeft, path } from 'ramda';
+import { mergeDeepLeft, path } from 'ramda';
+import { SPACE_HEADER_NAME } from './constants.js';
+import { generateObject, makeResponse, matchRoute } from './utils.js';
+import * as localHandlers from './handlers.js';
 
 export const logging = async function (ctx, next) {
   ctx.logs = [];
@@ -10,7 +13,7 @@ export const logging = async function (ctx, next) {
   await next();
   const ctime = new Date();
 
-  const msgs = ctx.logs || [];
+  const msgs = ctx.logs;
 
   msgs.push(colors.magenta(ctx.method));
   msgs.push(Math.floor(ctx.status / 100) === 2 ? colors.green(ctx.status) : colors.red(ctx.status));
@@ -26,27 +29,31 @@ export const logging = async function (ctx, next) {
   this.logger.info(msgs.join(' '));
 };
 
-export const exceptHandle = async function (ctx, next) {
+export const spaceParser = async function (ctx, next) {
+  // app id
+  const spaceId = ctx.headers[SPACE_HEADER_NAME];
+  const spaceAction = path(['settings', 'server', 'space'], this);
+
+  if (!spaceAction) { return; }
+
+  let space;
   try {
-    await next();
-  } catch (errs) {
-    if (!Array.isArray(errs) || errs[0] === undefined) {
-      ctx.status = 500;
-      ctx.body = { errors: [{ title: 'ServerError', detail: 'Internal Server Error' }] };
-      return this.logger.error(errs);
-    }
-
-    ctx.status = errs[0].status;
-    ctx.body = { errors: errs };
+    space = typeof spaceAction === 'string'
+      ? await this.call(spaceAction, { id: spaceId })
+      : spaceAction;
+  } catch (_) {
+    return;
   }
-};
 
-export const prepareRouting = async function (ctx, next) {
+  if (!space) { return; }
+
+  ctx.logs.push(`[${colors.green(space.name)}]`);
+
   // parse cookie
   const cookies = ctx.headers.cookie;
 
-  const form = ctx.request.body || {};
-
+  // form
+  const form = ctx.request.body;
   for (const key in ctx.request.files) {
     form[key] = new FileCursor(ctx.request.files[key].filepath);
   }
@@ -56,11 +63,11 @@ export const prepareRouting = async function (ctx, next) {
     method: ctx.method,
     path: ctx.path,
     // params - not yet,
-    form,
     query: ctx.query,
     headers: ctx.headers,
     cookies: cookies ? cookie.parse(cookies) : {},
-    ...clone(path(['settings', 'server', 'args'], this) || {})
+    form,
+    space
   };
 
   ctx.args = args;
@@ -68,42 +75,50 @@ export const prepareRouting = async function (ctx, next) {
   await next();
 };
 
-export const createRouteHandle = async function (route, ctx, next) {
-  const resp = await this.call(route.action, {
-    ...ctx.args,
-    params: mergeDeepLeft(ctx.params, route.params || {})
-  });
+export const routeHandler = async function (ctx) {
+  const { space, method, path: reqPath } = ctx.args;
 
-  if (!resp) {
-    return await next();
+  const routes = [
+    ...(path(['settings', 'server', 'routes'], this) || []),
+    ...(space.routes || [])
+  ];
+
+  const matched = matchRoute(method, reqPath, routes);
+
+  if (!matched) { return; }
+
+  const { route, params } = matched;
+  ctx.args.params = params;
+
+  const handlers = route.handlers || [];
+  if (handlers.length === 0 && route.handler) {
+    handlers.push({
+      name: route.handler,
+      input: route.input,
+      output: route.output
+    });
   }
 
-  ctx.status = path(['meta', 'status'], resp) || 200;
+  let curArgs = ctx.args;
+  for (const handler of handlers) {
+    const input = handler.input || {};
+    const output = handler.output || {};
+    const nextArgs = generateObject(input, curArgs);
+    const res = await (localHandlers[handler.name] ? localHandlers[handler.name](nextArgs) : this.call(handler.name, nextArgs));
+    const nextRes = generateObject({
+      ...{
+        status: '_.status',
+        body: '_.body',
+        headers: '_.headers',
+        cookies: '_.cookies'
+      },
+      ...output
+    }, res);
 
-  if (resp.data instanceof FileCursor) {
-    ctx.body = resp.data.toStream();
-  } else {
-    ctx.body = resp.data;
-  }
-
-  const headers = path(['meta', 'headers'], resp) || {};
-  for (const key in headers) {
-    ctx.set(key, headers[key]);
-  }
-
-  const cookies = path(['meta', 'cookies'], resp) || {};
-  for (const key in cookies) {
-    const value = cookies[key];
-
-    if (typeof value === 'string') {
-      ctx.cookies.set(key, value);
-      continue;
-    }
-
-    if (typeof value === 'object' && value.value !== undefined) {
-      const opts = clone(value);
-      delete opts.value;
-      ctx.cookies.set(key, value.value, opts);
+    if (makeResponse(ctx, nextRes)) {
+      return;
+    } else {
+      curArgs = mergeDeepLeft(generateObject(output, res), curArgs);
     }
   }
 };
