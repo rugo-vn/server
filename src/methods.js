@@ -29,6 +29,19 @@ export const logging = async function (ctx, next) {
   this.logger.info(msgs.join(' '));
 };
 
+export const exceptHandler = async function (ctx, next) {
+  try {
+    await next();
+  } catch (errs) {
+    if (!Array.isArray(errs) || errs[0] === undefined) {
+      makeResponse(ctx, { status: 500 });
+      return this.logger.error(errs);
+    }
+
+    makeResponse(ctx, { status: errs[0].status, body: { errors: errs } });
+  }
+};
+
 export const spaceParser = async function (ctx, next) {
   // app id
   const spaceId = ctx.headers[SPACE_HEADER_NAME];
@@ -36,14 +49,9 @@ export const spaceParser = async function (ctx, next) {
 
   if (!spaceAction) { return; }
 
-  let space;
-  try {
-    space = typeof spaceAction === 'string'
-      ? await this.call(spaceAction, { id: spaceId })
-      : spaceAction;
-  } catch (_) {
-    return;
-  }
+  const space = typeof spaceAction === 'string'
+    ? await this.call(spaceAction, { id: spaceId })
+    : spaceAction;
 
   if (!space) { return; }
 

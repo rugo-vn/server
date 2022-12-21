@@ -29,7 +29,10 @@ export const generateObject = (cfg, src) => {
 
   for (const key in cfg) {
     let value = cfg[key];
-    if (typeof value === 'string' && (value === '_' || value.indexOf('_.') === 0)) { value = objectPath.get({ _: src }, value); }
+
+    if (value === '_') value = src;
+
+    if (typeof value === 'string' && value.indexOf('_.') === 0) { value = objectPath.get({ _: src }, value); }
 
     objectPath.set(next, key, value);
   }

@@ -26,6 +26,7 @@ export const started = async function () {
   server.use(koaBody({ multipart: true })); // parse body
 
   server.use(this.logging);
+  server.use(this.exceptHandler);
   server.use(this.spaceParser);
   server.use(this.routeHandler);
 
