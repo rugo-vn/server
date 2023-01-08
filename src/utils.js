@@ -30,9 +30,9 @@ export const generateObject = (cfg, src) => {
   for (const key in cfg) {
     let value = cfg[key];
 
-    if (value === '_') value = src;
+    if (typeof value === 'string' && value.trim() === '_') value = src;
 
-    if (typeof value === 'string' && value.indexOf('_.') === 0) { value = objectPath.get({ _: src }, value); }
+    if (typeof value === 'string' && value.trim().indexOf('_.') === 0) { value = objectPath.get({ _: src }, value); }
 
     objectPath.set(next, key, value);
   }
@@ -48,6 +48,28 @@ const isResponse = (data = {}) => {
   return data.status;
 };
 
+const cleanObject = (data) => {
+  if (Array.isArray(data)) {
+    return [
+      ...data.map(cleanObject),
+    ];
+  }
+
+  if (data && data instanceof FileCursor) {
+    return null;
+  }
+
+  if (data && typeof data === 'object') {
+    const nextData = {};
+    for (let key in data) {
+      nextData[key] = cleanObject(data[key]);
+    }
+    return nextData;
+  }
+
+  return data;
+}
+
 export const makeResponse = function (ctx, res) {
   const code = isResponse(res);
 
@@ -59,6 +81,8 @@ export const makeResponse = function (ctx, res) {
     ctx.body = res.body.toStream();
   } else {
     ctx.body = res.body || defaultBody[code] || '';
+    if (ctx.body && typeof ctx.body === 'object')
+      ctx.body = cleanObject(ctx.body);
   }
 
   ctx.set(res.headers || {});

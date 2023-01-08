@@ -1,6 +1,7 @@
 import { FileCursor } from '@rugo-vn/service';
 import { existsSync, statSync } from 'fs';
 import { join, resolve } from 'path';
+import Mime from 'mime';
 
 export const alias = (args) => args;
 
@@ -26,6 +27,9 @@ export const serve = async ({ from, path: filePath = '' }) => {
   if (!existsSync(location)) { return; }
 
   return {
+    headers: {
+      'Content-Type': Mime.getType(location),
+    },
     body: FileCursor(location)
   };
 };

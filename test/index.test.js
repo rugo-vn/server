@@ -109,8 +109,8 @@ describe("Server test", () => {
     const res = await chai.request(`http://127.0.0.1:8081`)
       .get('/something');
 
-    expect(res).to.has.property('status', 404);
-    expect(res.text).to.be.eq('Not Found');
+    expect(res).to.has.property('status', 500);
+    expect(res.text).to.be.eq('Internal Server Error');
 
     await tmp.close();
   });

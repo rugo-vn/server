@@ -32,13 +32,13 @@ export const logging = async function (ctx, next) {
 export const exceptHandler = async function (ctx, next) {
   try {
     await next();
-  } catch (errs) {
-    if (!Array.isArray(errs) || errs[0] === undefined) {
+  } catch (err) {
+    if (!err.status) {
       makeResponse(ctx, { status: 500 });
-      return this.logger.error(errs);
+      return this.logger.error(err);
     }
 
-    makeResponse(ctx, { status: errs[0].status, body: { errors: errs } });
+    makeResponse(ctx, { status: err.status, body: { error: err } });
   }
 };
 
@@ -64,6 +64,12 @@ export const spaceParser = async function (ctx, next) {
   const form = ctx.request.body;
   for (const key in ctx.request.files) {
     form[key] = new FileCursor(ctx.request.files[key].filepath);
+  }
+
+  // assign spaceId to default perms
+  for (let perm of space.perms || []) {
+    if (!perm.spaceId)
+      perm.spaceId = space.id;
   }
 
   // args
@@ -113,15 +119,7 @@ export const routeHandler = async function (ctx) {
     const output = handler.output || {};
     const nextArgs = generateObject(input, curArgs);
     const res = await (localHandlers[handler.name] ? localHandlers[handler.name](nextArgs) : this.call(handler.name, nextArgs));
-    const nextRes = generateObject({
-      ...{
-        status: '_.status',
-        body: '_.body',
-        headers: '_.headers',
-        cookies: '_.cookies'
-      },
-      ...output
-    }, res);
+    const nextRes = generateObject(output, res);
 
     if (makeResponse(ctx, nextRes)) {
       return;
