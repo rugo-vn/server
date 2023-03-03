@@ -10,16 +10,20 @@ export const matchRoute = (method, path, routes) => {
 
   for (const route of routes) {
     const routeMethod = (route.method || 'get').toLowerCase();
-    if (routeMethod !== 'all' && routeMethod !== reqMethod) { continue; }
+    if (routeMethod !== 'all' && routeMethod !== reqMethod) {
+      continue;
+    }
 
     const fn = match(route.path, { decode: decodeURIComponent });
     const rel = fn(reqUrl);
 
-    if (!rel) { continue; }
+    if (!rel) {
+      continue;
+    }
 
     return {
       route,
-      params: mergeDeepLeft(rel.params, route.params || {})
+      params: mergeDeepLeft(rel.params, route.params || {}),
     };
   }
 };
@@ -32,27 +36,35 @@ export const generateObject = (cfg, src) => {
 
     if (typeof value === 'string' && value.trim() === '_') value = src;
 
-    if (typeof value === 'string' && value.trim().indexOf('_.') === 0) { value = objectPath.get({ _: src }, value); }
+    if (typeof value === 'string' && value.trim().indexOf('_.') === 0) {
+      value = objectPath.get({ _: src }, value);
+    }
 
-    objectPath.set(next, key, value);
+    try {
+      objectPath.set(next, key, value);
+    } catch (_) {
+      /* pass */
+    }
   }
 
   return next;
 };
 
 const isResponse = (data = {}) => {
-  if (path(['headers', 'location'], data)) { return data.status || 307; }
+  if (path(['headers', 'location'], data)) {
+    return data.status || 307;
+  }
 
-  if (data.body && !data.status) { return 200; }
+  if (data.body && !data.status) {
+    return 200;
+  }
 
   return data.status;
 };
 
 const cleanObject = (data) => {
   if (Array.isArray(data)) {
-    return [
-      ...data.map(cleanObject),
-    ];
+    return [...data.map(cleanObject)];
   }
 
   if (data && data instanceof FileCursor) {
@@ -68,12 +80,14 @@ const cleanObject = (data) => {
   }
 
   return data;
-}
+};
 
 export const makeResponse = function (ctx, res) {
   const code = isResponse(res);
 
-  if (!code) { return false; }
+  if (!code) {
+    return false;
+  }
 
   ctx.status = code;
 
