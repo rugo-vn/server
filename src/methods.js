@@ -16,7 +16,11 @@ export const logging = async function (ctx, next) {
   const msgs = ctx.logs;
 
   msgs.push(colors.magenta(ctx.method));
-  msgs.push(Math.floor(ctx.status / 100) === 2 ? colors.green(ctx.status) : colors.red(ctx.status));
+  msgs.push(
+    Math.floor(ctx.status / 100) === 2
+      ? colors.green(ctx.status)
+      : colors.red(ctx.status)
+  );
   msgs.push(colors.white(ctx.url));
 
   const redirectLocation = path(['response', 'header', 'location'], ctx);
@@ -26,7 +30,7 @@ export const logging = async function (ctx, next) {
 
   msgs.push(colors.yellow(`${ctime - ltime}ms`));
 
-  this.logger.info(msgs.join(' '));
+  this.logger.http(msgs.join(' '));
 };
 
 export const exceptHandler = async function (ctx, next) {
@@ -47,13 +51,18 @@ export const spaceParser = async function (ctx, next) {
   const spaceId = ctx.headers[SPACE_HEADER_NAME];
   const spaceAction = path(['settings', 'server', 'space'], this);
 
-  if (!spaceAction) { return; }
+  if (!spaceAction) {
+    return;
+  }
 
-  const space = typeof spaceAction === 'string'
-    ? await this.call(spaceAction, { id: spaceId })
-    : spaceAction;
+  const space =
+    typeof spaceAction === 'string'
+      ? await this.call(spaceAction, { id: spaceId })
+      : spaceAction;
 
-  if (!space) { return; }
+  if (!space) {
+    return;
+  }
 
   ctx.logs.push(`[${colors.green(space.name)}]`);
 
@@ -68,8 +77,7 @@ export const spaceParser = async function (ctx, next) {
 
   // assign spaceId to default perms
   for (let perm of space.perms || []) {
-    if (!perm.spaceId)
-      perm.spaceId = space.id;
+    if (!perm.spaceId) perm.spaceId = space.id;
   }
 
   // args
@@ -81,7 +89,7 @@ export const spaceParser = async function (ctx, next) {
     headers: ctx.headers,
     cookies: cookies ? cookie.parse(cookies) : {},
     form,
-    space
+    space,
   };
 
   ctx.args = args;
@@ -94,12 +102,14 @@ export const routeHandler = async function (ctx) {
 
   const routes = [
     ...(path(['settings', 'server', 'routes'], this) || []),
-    ...(space.routes || [])
+    ...(space.routes || []),
   ];
 
   const matched = matchRoute(method, reqPath, routes);
 
-  if (!matched) { return; }
+  if (!matched) {
+    return;
+  }
 
   const { route, params } = matched;
   ctx.args.params = params;
@@ -109,7 +119,7 @@ export const routeHandler = async function (ctx) {
     handlers.push({
       name: route.handler,
       input: route.input,
-      output: route.output
+      output: route.output,
     });
   }
 
@@ -118,7 +128,9 @@ export const routeHandler = async function (ctx) {
     const input = handler.input || {};
     const output = handler.output || {};
     const nextArgs = generateObject(input, curArgs);
-    const res = await (localHandlers[handler.name] ? localHandlers[handler.name](nextArgs) : this.call(handler.name, nextArgs));
+    const res = await (localHandlers[handler.name]
+      ? localHandlers[handler.name](nextArgs)
+      : this.call(handler.name, nextArgs));
     const nextRes = generateObject(output, res);
 
     if (makeResponse(ctx, nextRes)) {

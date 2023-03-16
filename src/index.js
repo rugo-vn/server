@@ -15,7 +15,9 @@ export const started = async function () {
   const port = path(['settings', 'server', 'port'], this);
   const secret = path(['settings', 'server', 'secret'], this) || nanoid();
 
-  if (!port) { throw new RugoException('Could not find server port'); }
+  if (!port) {
+    throw new RugoException('Could not find server port');
+  }
 
   const server = new Koa();
 
@@ -31,13 +33,19 @@ export const started = async function () {
   server.use(this.routeHandler);
 
   // listen
-  await new Promise(resolve => {
+  await new Promise((resolve) => {
     this.listener = server.listen(port, () => {
       resolve();
     });
   });
 
-  this.logger.info(colors.green(`Server is ${colors.bold('running')} at ${colors.yellow('http://localhost:' + port)}`));
+  this.logger.info(
+    colors.green(
+      `Server is ${colors.bold('running')} at ${colors.yellow(
+        'http://localhost:' + port
+      )}`
+    )
+  );
 };
 
 export const closed = async function () {
