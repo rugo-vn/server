@@ -13,14 +13,31 @@ Each request received, the server will follow these steps:
 
 ```js
 const settings = {
-  server: {
-    port: /* port for server mount to */,
-    secret: /* secret for sign cookies */,
-    space: /* action to get space or default space object */,
-    routes: /* global routes of application */,
-  }
+  port: /* port for server mount to */,
+  secret: /* secret for sign cookies */,
+  api: /* prefix for apis */,
+  apis: [
+    { src: '', addr: ''} /* alias src: [asset].[method] to addr: [service].[action] */
+  ]
 }
 ```
+
+## File System Routing
+
+**Direct routes**
+
+- `/` -> `/index.ejs`
+- `/blog` -> `/blog.ejs`.
+
+**Named routes** (Prefix with underscore)
+
+- `/foo` -> `/_name.ejs`
+- `/foo` -> `/_name/index.ejs`
+
+**Skipped routes** (Prefix with dot, or double underscore)
+
+- `/__bar.ejs` or more pretty with `/__bar__.ejs`.
+- `/.sth.ejs` (Avoid that because it will be a hidden file).
 
 ## Defines
 
@@ -66,7 +83,7 @@ const handler = {
     'dst.object.path': '_.src.object.path' /* dst is to handler or action, src is from server */,
   },
   output: { /* output for handler */
-    'dst.object.path': '_.src.object.path' /* dst is to server, src is from return of handler or action */, 
+    'dst.object.path': '_.src.object.path' /* dst is to server, src is from return of handler or action */,
   },
 }
 ```
@@ -116,15 +133,15 @@ const dst = {
 `redirect`
 
 - Input:
-  + `to`
-  + `code`
+  - `to`
+  - `code`
 - Output: `[response]`
 
 `serve`
 
 - Input:
-  + `from`
-  + `path`
+  - `from`
+  - `path`
 - Output: `[response]`
 
 ## License

@@ -1,23 +1,26 @@
-import { path } from 'ramda';
-import { RugoException } from '@rugo-vn/exception';
-import { nanoid } from 'nanoid';
-import Koa from 'koa';
-import colors from 'colors';
-import koaBody from 'koa-body';
 import cors from '@koa/cors';
+import Koa from 'koa';
+import koaBody from 'koa-body';
 import applyQueryString from 'koa-qs';
+import colors from 'colors';
+import { defineAction } from '@rugo-vn/service';
+import { nanoid } from 'nanoid';
+import { curryN } from 'ramda';
+import {
+  logging,
+  exceptHandler,
+  preprocessing,
+  serveStatic,
+  serveView,
+} from './handlers.js';
 
-export const name = 'server';
+let listener;
 
-export * as methods from './methods.js';
+defineAction('start', async function (settings) {
+  const { port, engine } = settings;
+  const secret = settings.secret || nanoid();
 
-export const started = async function () {
-  const port = path(['settings', 'server', 'port'], this);
-  const secret = path(['settings', 'server', 'secret'], this) || nanoid();
-
-  if (!port) {
-    throw new RugoException('Could not find server port');
-  }
+  if (!port) throw new Error('Could not find server port');
 
   const server = new Koa();
 
@@ -27,28 +30,28 @@ export const started = async function () {
   server.use(cors()); // allow cors
   server.use(koaBody({ multipart: true })); // parse body
 
-  server.use(this.logging);
-  server.use(this.exceptHandler);
-  server.use(this.spaceParser);
-  server.use(this.routeHandler);
+  server.use(logging);
+  server.use(exceptHandler);
+  server.use(curryN(2, preprocessing)(settings));
+  server.use(serveStatic);
 
-  // listen
+  if (engine) server.use(curryN(2, serveView)(engine).bind(this));
+
   await new Promise((resolve) => {
-    this.listener = server.listen(port, () => {
+    listener = server.listen(port, () => {
       resolve();
     });
   });
 
-  this.logger.info(
+  console.log(
     colors.green(
       `Server is ${colors.bold('running')} at ${colors.yellow(
         'http://localhost:' + port
       )}`
     )
   );
-};
+});
 
-export const closed = async function () {
-  await this.listener.close();
-  delete this.listener;
-};
+defineAction('stop', async function () {
+  if (listener) await listener.close();
+});

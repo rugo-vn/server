@@ -1,168 +1,147 @@
-/* eslint-disable */
-
-import { mkdirSync, writeFileSync } from 'fs';
+import { spawnService } from '@rugo-vn/service';
+import { pack } from '@rugo-vn/service/src/wrap.js';
 import chai, { assert, expect } from 'chai';
 import chaiHttp from 'chai-http';
-import { createBroker } from '@rugo-vn/service';
-import rimraf from 'rimraf';
-import { join, resolve } from 'path';
 
-const TMP_DIR = resolve('test/.tmp');
+const PORT = 3000;
+const API_PREFIX = '/api/v1';
 
 chai.use(chaiHttp);
 
-describe("Server test", () => {
-  const address = 'http://127.0.0.1:8080';
-  let broker;
+describe('Server test', function () {
+  const address = `http://127.0.0.1:${PORT}`;
+  let service;
 
-  beforeEach(async () => {
-    rimraf.sync(TMP_DIR);
+  it('should not create server', async () => {
+    try {
+      service = await spawnService({
+        name: 'server',
+        exec: ['node', 'src/index.js'],
+        cwd: './',
+      });
+      await service.start();
+      assert.fail('should error');
+    } catch (err) {
+      expect(err).to.has.property('message', 'Could not find server port');
+    }
 
-    mkdirSync(TMP_DIR);
-    writeFileSync(join(TMP_DIR, 'index.html'), 'Hello HTML!');
-    writeFileSync(join(TMP_DIR, 'sample.txt'), 'Hello Sample!');
+    await service.stop();
+  });
 
-    broker = createBroker({
-      _services: [
-        './src/index.js',
-        './test/sample.service.js',
-      ],
-      server: {
-        port: 8080,
+  it('should run server', async () => {
+    service = await spawnService({
+      name: 'server',
+      exec: ['node', 'src/index.js'],
+      cwd: './',
+      settings: {
+        port: PORT,
+        engine: 'fx.run', // view engine
         space: {
-          id: 'test',
-          name: 'test',
-          routes: [
-            { method: 'post', path: '/upload', handler: 'alias', input: { from: '_.form.file' }, output: { body: '_.from' }, },
-            { path: '/public/(.*)?', handler: 'serve', input: { from: TMP_DIR, path: '_.params.0' }},
+          /* official props */
+          id: 'spaceId',
+          assets: [
+            { name: 'statics', type: 'static', mount: '/stuffs' },
+            { name: 'uploads', type: 'static', mount: '/' },
+            { name: 'views', type: 'view', mount: '/' },
           ],
+
+          /* additions props */
+          storage: './test/fixtures/',
         },
-        routes: [
-          { path: '/redirect', handler: 'redirect', input: { to: address }},
-          { path: '/api/:table', handlers: [
-            { name: 'sample.gate', input: { 'auth.table': '_.params.table', 'auth.space': '_.space.id' }, output: { auth: '_' } },
-            {
-              name: 'sample.find',
-              input: { auth: '_.auth', 'auth.action': 'find', table: '_.params.table', query: '_.query', bar: '_.cookies.bar' },
-              output: {
-                status: 200,
-                body: '_',
-                'cookies.table': '_.table',
-                'cookies.space': { signed: true },
-                'cookies.space.value': '_.auth.space'
-              },
-            },
-          ]},
-        ],
+        // api: {
+        //   base: API_PREFIX,
+        //   gate: 'auth.gate',
+        //   resources: {
+        //     tables: 'db',
+        //     drives: 'storage',
+        //   },
+        // },
+        // routes: [],
+      },
+      async hook(addr, args, opts) {
+        let res;
+
+        switch (addr) {
+          case 'sayHello':
+            res = 'Hello, World!';
+            break;
+
+          case 'login':
+          case 'db.update':
+            res = {
+              args,
+              opts,
+            };
+            break;
+
+          case 'fx.run':
+            res = args.files[args.entry];
+            break;
+        }
+
+        return await pack(() => res);
       },
     });
 
-    await broker.loadServices();
-    await broker.start();
+    await service.start();
   });
 
-  afterEach(async () => {
-    rimraf.sync(TMP_DIR);
-    await broker.close();
-  });
-
-  it('should create server', async () => {
+  it('should test server online', async () => {
     // simple get
-    const res = await chai.request(address)
-      .get('/something');
+    const res = await chai.request(address).get('/something');
 
     expect(res).to.has.property('status', 404);
     expect(res.text).to.be.eq('Not Found');
   });
 
-  it('should not create server', async () => {
-    const tmp = createBroker({
-      _services: [
-        './src/index.js',
-      ],
-    });
+  // it('should say hello', async () => {
+  //   const res = await chai.request(address).get(`${API_PREFIX}/greets`);
 
-    await tmp.loadServices();
+  //   expect(res.text).to.be.eq('Hello, World!');
+  //   expect(res).to.has.property('status', 200);
+  // });
 
-    try {
-      await tmp.start();
-      assert.fail('should error');
-    } catch(err) {
-      expect(err).to.has.property('message', 'Could not find server port');
-    }
+  // it('should call login api', async () => {
+  //   const res = await chai
+  //     .request(address)
+  //     .post(`${API_PREFIX}/tokens`)
+  //     .send({ email: 'sample@rugo.vn', password: 'password' });
+
+  //   const { args, opts } = res.body;
+
+  //   expect(args).to.has.property('data');
+  //   expect(args.data).to.has.property('email');
+  //   expect(args.data).to.has.property('password');
+
+  //   expect(opts).to.has.property('userSchema');
+  //   expect(opts).to.has.property('roleSchema');
+  // });
+
+  // it('should call default api', async () => {
+  //   const res = await chai
+  //     .request(address)
+  //     .patch(`${API_PREFIX}/people/12`)
+  //     .send({});
+  //   console.log(res.body);
+  // });
+
+  it('should serve directory', async () => {
+    const res = await chai.request(address).get(`/stuffs/text.txt`).buffer();
+    expect(res.text).to.be.eq('Hello, World!');
+
+    const res2 = await chai.request(address).get(`/stuffs/img.png`).buffer();
+    expect(res2.body instanceof Buffer).to.be.eq(true);
+
+    const res3 = await chai.request(address).get(`/`).buffer();
+    expect(res3.text).to.be.eq('Upload content!\n');
   });
 
-  it('should not get space', async () => {
-    const tmp = createBroker({
-      _services: [
-        './src/index.js',
-      ],
-      server: {
-        port: 8081,
-        space: 'no.space',
-      }
-    });
-
-    await tmp.loadServices();
-    await tmp.start();
-
-    const res = await chai.request(`http://127.0.0.1:8081`)
-      .get('/something');
-
-    expect(res).to.has.property('status', 500);
-    expect(res.text).to.be.eq('Internal Server Error');
-
-    await tmp.close();
+  it('should serve view', async () => {
+    const res = await chai.request(address).get(`/blog`);
+    expect(res.text).to.be.eq('Hello, Blogger!\n');
   });
 
-  it('should redirect', async () => {
-    const res = await chai.request(address)
-      .get('/redirect');
-
-    expect(res).to.redirectTo(address + '/');
-  });
-
-  it('should send file to server', async () => {
-    const res = await chai.request(address)
-      .post('/upload')
-      .attach('file', './package.json')
-      .buffer();
-
-    expect(res).to.has.property('status', 200);
-    expect(res.body instanceof Buffer).to.be.eq(true);
-  });
-
-  it('should nested api', async () => {
-    const res = await chai.request(address)
-      .get('/api/demo?name=foo')
-      .set('Cookie', 'bar=something');
-
-    expect(res).to.has.property('status', 200);
-
-    expect(res.body).to.has.property('table', 'demo');
-    expect(res.body).to.has.property('bar', 'something');
-    expect(res.body.query).to.has.property('name', 'foo');
-    expect(res.body.auth).to.has.property('table', 'demo');
-    expect(res.body.auth).to.has.property('space', 'test');
-    expect(res.body.auth).to.has.property('action', 'find');
-
-    expect(res).to.have.cookie('table', 'demo');
-    expect(res).to.have.cookie('space', 'test');
-  });
-
-  it('should serve folder', async () => {
-    const res = await chai.request(address)
-      .get('/public')
-      .buffer();
-
-    expect(res).to.has.property('status', 200);
-    expect(res.body.toString()).to.be.eq('Hello HTML!');
-
-    const res2 = await chai.request(address)
-      .get('/public/sample.txt')
-      .buffer();
-
-    expect(res2).to.has.property('status', 200);
-    expect(res2.body.toString()).to.be.eq('Hello Sample!');
+  it('should stop service', async () => {
+    await service.stop();
   });
 });
