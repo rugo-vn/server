@@ -12,12 +12,13 @@ import {
   preprocessing,
   serveStatic,
   serveView,
+  injectReload,
 } from './handlers.js';
 
 let listener;
 
 defineAction('start', async function (settings) {
-  const { port, engine } = settings;
+  const { port, engine, inject } = settings;
   const secret = settings.secret || nanoid();
 
   if (!port) throw new Error('Could not find server port');
@@ -33,6 +34,9 @@ defineAction('start', async function (settings) {
   server.use(logging);
   server.use(exceptHandler);
   server.use(curryN(2, preprocessing)(settings));
+
+  if (inject) server.use(curryN(2, injectReload)(inject));
+
   server.use(serveStatic);
 
   if (engine) server.use(curryN(2, serveView)(engine).bind(this));

@@ -36,6 +36,7 @@ describe('Server test', function () {
       settings: {
         port: PORT,
         engine: 'fx.run', // view engine
+        inject: 8001, // inject reload code with port server, default: false
         space: {
           /* official props */
           id: 'spaceId',
@@ -138,7 +139,7 @@ describe('Server test', function () {
 
   it('should serve view', async () => {
     const res = await chai.request(address).get(`/blog`);
-    expect(res.text).to.be.eq('Hello, Blogger!\n');
+    expect(res.text.indexOf(`ws://localhost:8001`)).to.be.not.eq(-1);
   });
 
   it('should stop service', async () => {

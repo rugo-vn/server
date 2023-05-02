@@ -1,8 +1,8 @@
 import colors from 'colors';
 import cookie from 'cookie';
 import Mime from 'mime';
-import { createReadStream, existsSync, statSync } from 'node:fs';
-import { join, parse, relative, resolve } from 'node:path';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, parse, relative, resolve } from 'node:path';
 import { path } from 'ramda';
 import { callAction } from '@rugo-vn/service';
 import { secureJoin } from './path.js';
@@ -13,7 +13,11 @@ import {
   matchExt,
   matchRoute,
   readAllList,
+  streamToString,
 } from './methods.js';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function logging(ctx, next) {
   ctx.logs = [];
@@ -211,4 +215,25 @@ export async function serveView(engine, ctx, next) {
   }
 
   await next();
+}
+
+export async function injectReload(port, ctx, next) {
+  await next();
+
+  if (!ctx.body) return;
+
+  if (ctx.body.constructor.name === 'ReadStream') {
+    if (!matchExt('.html')(ctx.body.path)) return;
+
+    ctx.body = await streamToString(ctx.body);
+  }
+
+  const injectContent = readFileSync(join(__dirname, 'inject.js'))
+    .toString()
+    .replace(`{{PORT}}`, port);
+
+  ctx.body = ctx.body.replace(
+    /(<\/body>(?![\s\S]*<\/body>[\s\S]*$))/gi,
+    `<script>${injectContent}</script>$1`
+  );
 }
