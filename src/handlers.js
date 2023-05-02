@@ -209,6 +209,9 @@ export async function serveView(engine, ctx, next) {
     const res = await this.call(engine, {
       entry: matched.route.view,
       files: readAllList(assetPath, ls),
+      locals: {
+        params: matched.params,
+      },
     });
 
     return makeResponse(ctx, { body: res });

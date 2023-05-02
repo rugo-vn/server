@@ -76,7 +76,7 @@ describe('Server test', function () {
             break;
 
           case 'fx.run':
-            res = args.files[args.entry];
+            res = args.files[args.entry] + JSON.stringify(args.locals.params);
             break;
         }
 
@@ -140,6 +140,9 @@ describe('Server test', function () {
   it('should serve view', async () => {
     const res = await chai.request(address).get(`/blog`);
     expect(res.text.indexOf(`ws://localhost:8001`)).to.be.not.eq(-1);
+
+    const res2 = await chai.request(address).get(`/posts/hello`);
+    expect(res2.text).to.be.eq('<%= name %>\n{"name":"hello"}');
   });
 
   it('should stop service', async () => {
