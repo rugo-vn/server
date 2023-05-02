@@ -210,6 +210,7 @@ export async function serveView(engine, ctx, next) {
       entry: matched.route.view,
       files: readAllList(assetPath, ls),
       locals: {
+        ...ctx.args,
         params: matched.params,
       },
     });
