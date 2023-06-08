@@ -44,20 +44,25 @@ describe('Server test', function () {
             { name: 'statics', type: 'static', mount: '/stuffs' },
             { name: 'uploads', type: 'static', mount: '/' },
             { name: 'views', type: 'view', mount: '/' },
+            {
+              name: 'posts',
+              type: 'db',
+              properties: {
+                name: { type: 'String' },
+              },
+            },
           ],
-
           /* additions props */
           storage: './test/fixtures/',
         },
-        // api: {
-        //   base: API_PREFIX,
-        //   gate: 'auth.gate',
-        //   resources: {
-        //     tables: 'db',
-        //     drives: 'storage',
-        //   },
-        // },
-        // routes: [],
+        api: {
+          base: API_PREFIX,
+          mappings: {
+            'posts.get': 'sayHello',
+            '.post': 'db.update',
+            '.': 'sayHello',
+          },
+        },
       },
       async hook(addr, args, opts) {
         let res;
@@ -95,12 +100,12 @@ describe('Server test', function () {
     expect(res.text).to.be.eq('Not Found');
   });
 
-  // it('should say hello', async () => {
-  //   const res = await chai.request(address).get(`${API_PREFIX}/greets`);
+  it('should say hello', async () => {
+    const res = await chai.request(address).get(`${API_PREFIX}/greets`);
 
-  //   expect(res.text).to.be.eq('Hello, World!');
-  //   expect(res).to.has.property('status', 200);
-  // });
+    expect(res.text).to.be.eq('Hello, World!');
+    expect(res).to.has.property('status', 200);
+  });
 
   // it('should call login api', async () => {
   //   const res = await chai
@@ -118,13 +123,19 @@ describe('Server test', function () {
   //   expect(opts).to.has.property('roleSchema');
   // });
 
-  // it('should call default api', async () => {
-  //   const res = await chai
-  //     .request(address)
-  //     .patch(`${API_PREFIX}/people/12`)
-  //     .send({});
-  //   console.log(res.body);
-  // });
+  it('should call default api', async () => {
+    const res = await chai
+      .request(address)
+      .post(`${API_PREFIX}/posts/12`)
+      .send({});
+
+    expect(res.body).to.has.property('args');
+    expect(res.body.args).to.has.property('id');
+    expect(res.body.args).to.has.property('meta');
+
+    expect(res.body).to.has.property('opts');
+    expect(res.body.opts).to.has.property('schema');
+  });
 
   it('should serve directory', async () => {
     const res = await chai.request(address).get(`/stuffs/text.txt`).buffer();

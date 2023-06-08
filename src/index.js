@@ -14,33 +14,40 @@ import {
   serveView,
   injectReload,
 } from './handlers.js';
+import { serveApi } from './middlewares/api.js';
 
 let listener;
 
 defineAction('start', async function (settings) {
-  const { port, engine, inject } = settings;
+  // config
+  const { port, engine, inject, api } = settings;
   const secret = settings.secret || nanoid();
 
   if (!port) throw new Error('Could not find server port');
 
+  // app
   const server = new Koa();
-
   server.keys = [secret];
-
   applyQueryString(server); // parse query string
   server.use(cors()); // allow cors
   server.use(koaBody({ multipart: true })); // parse body
 
+  // common middleware
   server.use(logging);
   server.use(exceptHandler);
   server.use(curryN(2, preprocessing)(settings));
 
-  if (inject) server.use(curryN(2, injectReload)(inject));
+  // api middleware
+  if (api) server.use(curryN(2, serveApi)(api).bind(this));
 
+  // static middleware
+  if (inject) server.use(curryN(2, injectReload)(inject));
   server.use(serveStatic);
 
+  // view middleware
   if (engine) server.use(curryN(2, serveView)(engine).bind(this));
 
+  // listen
   await new Promise((resolve) => {
     listener = server.listen(port, () => {
       resolve();
