@@ -38,6 +38,7 @@ export async function serveApi({ base, mappings, opts = {} }, ctx, next) {
     if (item.name !== asset) continue;
 
     schema = clone(item);
+    delete schema.type;
     break;
   }
 
