@@ -62,6 +62,7 @@ describe('Server test', function () {
             '.post': 'db.update',
             '.': 'sayHello',
           },
+          opts: {},
         },
       },
       async hook(addr, args, opts) {

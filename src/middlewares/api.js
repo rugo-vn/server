@@ -1,8 +1,9 @@
 import { join } from 'node:path';
+import { clone } from 'ramda';
 import { API_ROUTES } from '../constants.js';
 import { makeResponse, matchRoute } from '../methods.js';
 
-export async function serveApi({ base, mappings }, ctx, next) {
+export async function serveApi({ base, mappings, opts = {} }, ctx, next) {
   // routing
   const { path, method, form, query, headers, space } = ctx.args;
   const matched = matchRoute(
@@ -36,7 +37,7 @@ export async function serveApi({ base, mappings }, ctx, next) {
   for (const item of space.assets || []) {
     if (item.name !== asset) continue;
 
-    schema = item;
+    schema = clone(item);
     break;
   }
 
@@ -48,7 +49,7 @@ export async function serveApi({ base, mappings }, ctx, next) {
       cond: query,
       meta: headers,
     },
-    { schema }
+    { ...opts, schema }
   );
 
   return makeResponse(ctx, { body: res });
