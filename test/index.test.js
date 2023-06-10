@@ -63,6 +63,7 @@ describe('Server test', function () {
             '.': 'sayHello',
           },
           opts: {},
+          auth: 'auth',
         },
       },
       async hook(addr, args, opts) {
@@ -83,6 +84,9 @@ describe('Server test', function () {
 
           case 'fx.run':
             res = args.files[args.entry] + JSON.stringify(args.locals.params);
+            break;
+
+          case 'auth.gate':
             break;
         }
 

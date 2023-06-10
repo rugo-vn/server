@@ -3,7 +3,7 @@ import { clone } from 'ramda';
 import { API_ROUTES } from '../constants.js';
 import { makeResponse, matchRoute } from '../methods.js';
 
-export async function serveApi({ base, mappings, opts = {} }, ctx, next) {
+export async function serveApi({ base, mappings, opts = {}, auth }, ctx, next) {
   // routing
   const { path, method, form, query, headers, space } = ctx.args;
   const matched = matchRoute(
@@ -15,14 +15,14 @@ export async function serveApi({ base, mappings, opts = {} }, ctx, next) {
   if (!matched) return await next();
 
   // mapping
-  const { asset, id } = matched.params;
+  const { asset: assetName, id } = matched.params;
 
   let address;
   for (const key in mappings) {
     const parts = key.toLowerCase().split('.');
     if (parts.length !== 2) continue;
 
-    if (parts[0] && parts[0] !== asset.toLowerCase()) continue;
+    if (parts[0] && parts[0] !== assetName.toLowerCase()) continue;
 
     if (parts[1] && parts[1] !== method.toLowerCase()) continue;
 
@@ -33,25 +33,48 @@ export async function serveApi({ base, mappings, opts = {} }, ctx, next) {
   if (!address) return await next();
 
   // compose
-  let schema;
+  const args = {
+    id,
+    data: form,
+    cond: query,
+    meta: headers,
+  };
+  let asset;
   for (const item of space.assets || []) {
-    if (item.name !== asset) continue;
+    if (item.name !== assetName) continue;
 
-    schema = clone(item);
-    delete schema.type;
+    asset = clone(item);
     break;
   }
 
-  const res = await this.call(
-    address,
-    {
-      id,
-      data: form,
-      cond: query,
-      meta: headers,
-    },
-    { ...opts, schema }
+  if (!asset || !auth) {
+    return makeResponse(ctx, {
+      body: await this.call(address, args, opts),
+    });
+  }
+
+  const agent = {
+    space: space.id,
+    asset: asset.name,
+    id: id,
+    action: method.toLowerCase(),
+  };
+
+  await this.call(
+    `${auth}.gate`,
+    { ...args, agent, perms: asset.perms || [] },
+    opts
   );
 
-  return makeResponse(ctx, { body: res });
+  const schema = asset;
+  delete schema.type;
+  delete schema.mount;
+  delete schema.perms;
+
+  return makeResponse(ctx, {
+    body: await this.call(address, args, {
+      ...opts,
+      schema,
+    }),
+  });
 }
