@@ -1,6 +1,6 @@
 {
   "name": "@rugo-vn/server",
-  "version": "2.1.0-beta.7",
+  "version": "2.1.0-beta.8",
   "description": "A server listener for the platform.",
   "main": "./src/index.js",
   "type": "module",

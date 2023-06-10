@@ -39,17 +39,24 @@ export async function serveApi({ base, mappings, opts = {}, auth }, ctx, next) {
     cond: query,
     meta: headers,
   };
-  let asset;
+  let asset, schema;
   for (const item of space.assets || []) {
     if (item.name !== assetName) continue;
 
-    asset = clone(item);
+    asset = item;
+    schema = clone(item);
+    delete schema.type;
+    delete schema.mount;
+    delete schema.perms;
     break;
   }
 
   if (!asset || !auth) {
     return makeResponse(ctx, {
-      body: await this.call(address, args, opts),
+      body: await this.call(address, args, {
+        ...opts,
+        schema,
+      }),
     });
   }
 
@@ -65,11 +72,6 @@ export async function serveApi({ base, mappings, opts = {}, auth }, ctx, next) {
     { ...args, agent, perms: asset.perms || [] },
     opts
   );
-
-  const schema = asset;
-  delete schema.type;
-  delete schema.mount;
-  delete schema.perms;
 
   return makeResponse(ctx, {
     body: await this.call(address, args, {
