@@ -5,6 +5,7 @@ import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, parse, relative, resolve } from 'node:path';
 import { path } from 'ramda';
 import { callAction } from '@rugo-vn/service';
+import { HttpResponse } from '@rugo-vn/service/src/classes.js';
 import { secureJoin } from './path.js';
 import { STATIC_TYPE, VIEW_TYPE } from './constants.js';
 import {
@@ -53,6 +54,10 @@ export async function exceptHandler(ctx, next) {
     if (!err.status) {
       makeResponse(ctx, { status: 500 });
       return console.log(err);
+    }
+
+    if (err.constructor.name === HttpResponse.name) {
+      return makeResponse(ctx, err);
     }
 
     makeResponse(ctx, { status: err.status, body: { error: err } });
