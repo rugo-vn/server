@@ -41,12 +41,12 @@ describe('Server test', function () {
           /* official props */
           id: 'spaceId',
           assets: [
-            { name: 'statics', type: 'static', mount: '/stuffs' },
-            { name: 'uploads', type: 'static', mount: '/' },
-            { name: 'views', type: 'view', mount: '/' },
+            { name: 'statics', kind: 'static', mount: '/stuffs' },
+            { name: 'uploads', kind: 'static', mount: '/' },
+            { name: 'views', kind: 'view', mount: '/' },
             {
               name: 'posts',
-              type: 'db',
+              kind: 'db',
               properties: {
                 name: { type: 'String' },
               },

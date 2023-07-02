@@ -45,7 +45,7 @@ export async function serveApi({ base, mappings, opts = {}, auth }, ctx, next) {
 
     asset = item;
     schema = clone(item);
-    delete schema.type;
+    delete schema.kind;
     delete schema.mount;
     delete schema.perms;
     break;

@@ -140,7 +140,7 @@ export async function serveStatic(ctx, next) {
 
   for (const asset of space.assets || []) {
     // not static and not mount
-    if (asset.type !== STATIC_TYPE || !asset.mount) continue;
+    if (asset.kind !== STATIC_TYPE || !asset.mount) continue;
 
     // not mount path
     const relatedPath = relative(asset.mount, path);
@@ -171,7 +171,7 @@ export async function serveView(engine, ctx, next) {
 
   for (const asset of space.assets || []) {
     // not static and not mount
-    if (asset.type !== VIEW_TYPE || !asset.mount) continue;
+    if (asset.kind !== VIEW_TYPE || !asset.mount) continue;
 
     // not mount path
     const relatedPath = relative(asset.mount, path);
